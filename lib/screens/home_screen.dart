@@ -1,0 +1,147 @@
+import 'package:flutter/material.dart';
+import '../helpers/database_helper.dart';
+
+class HomeScreen extends StatefulWidget {
+  HomeScreen();
+
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final DatabaseHelper _dbHelper = DatabaseHelper();
+  List<Map<String, dynamic>> _mariages = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMariages();
+  }
+
+  /// Charger les mariages de l'utilisateur
+  Future<void> _loadMariages() async {
+    final mariages = await _dbHelper.getMariages();
+    setState(() {
+      _mariages = mariages;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Accueil'),
+        elevation: 1,
+        backgroundColor: Colors.blue,
+        centerTitle: true,
+        titleTextStyle: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+      ),
+      body: _mariages.isEmpty
+          ? Center(
+        child: Text(
+          'Aucun mariage trouvé. Créez-en un pour commencer !',
+          style: TextStyle(fontSize: 16),
+          textAlign: TextAlign.center,
+        ),
+      )
+          : Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+              'Sélectionnez un mariage pour gérer les invités :',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+                color: Colors.black87,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _mariages.length,
+              itemBuilder: (context, index) {
+                final mariage = _mariages[index];
+                return Container(
+                  margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white70,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.blue, width: 1),
+                  ),
+                  child: ListTile(
+                    title: Text('${mariage['nomMarie1']} & ${mariage['nomMarie2']}'),
+                    subtitle: Text(
+                      'Lieu : ${mariage['lieu']}\nDate : ${mariage['date']}',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    isThreeLine: true,
+                    onTap: () {
+                      // Ouvrir la liste des invités
+                      Navigator.pushNamed(
+                        context,
+                        '/invites-list',
+                        arguments: {
+                          'mariageId': mariage['id'],
+                          'nomMariage': '${mariage['nomMarie1']} & ${mariage['nomMarie2']}',
+                        },
+                      );
+                    },
+                    leading: CircleAvatar(
+                      radius: 30,
+                      child: Text('${mariage['nomMarie1'][0]}/${mariage['nomMarie2'][0]}'),
+                    ),
+                    trailing: Column(
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.delete_forever, color: Colors.red),
+                          onPressed: () async {
+                            // demander confirmation avant de supprimer
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: Text('Supprimer le mariage'),
+                                content: Text(
+                                    'Voulez-vous vraiment supprimer ce mariage ? \n\n Cela supprimera également tous les invités associés.'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: Text('Annuler', style: TextStyle(color: Colors.blue)),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                      _dbHelper.deleteMariage(mariage['id']);
+                                      _loadMariages(); // Recharger les mariages après suppression
+                                    },
+                                    child: Text('Supprimer', style: TextStyle(color: Colors.red)),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.pushNamed(context, '/create-mariage', arguments: 1).then((_) {
+            _loadMariages(); // Recharger les mariages après création
+          });
+        },
+        tooltip: 'Créer un nouveau mariage',
+        backgroundColor: Colors.blue,
+        child: Icon(Icons.add, color: Colors.white),
+      ),
+    );
+  }
+}
