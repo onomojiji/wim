@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:wim/configs/colors.dart';
 import 'package:wim/screens/create_mariage_screen.dart';
 import 'package:wim/screens/invites_list_screen.dart';
+import 'package:wim/screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 
@@ -13,12 +15,26 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'wic',
-      theme: ThemeData(primarySwatch: Colors.blue),
+      title: 'Wedding Invite Manager',
+      theme: ThemeData(
+          appBarTheme: AppBarTheme(
+              color: secondaryColor,
+            iconTheme: IconThemeData(color: whiteColor),
+            elevation: 1,
+            centerTitle: true,
+            titleTextStyle: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          primaryColor: secondaryColor,
+      ),
       initialRoute: '/',
       onGenerateRoute: (settings) {
         switch (settings.name) {
           case '/':
+            return MaterialPageRoute(builder: (context) => SplashScreen());
+          case '/home':
             return MaterialPageRoute(builder: (context) => HomeScreen());
           case '/create-mariage':
             if (settings.arguments is int) {

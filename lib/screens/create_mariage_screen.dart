@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:wim/configs/colors.dart';
+import 'package:wim/configs/screen.dart';
 import '../helpers/database_helper.dart';
 import '../models/mariage_model.dart';
 
@@ -63,14 +65,9 @@ class _CreateMariageScreenState extends State<CreateMariageScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text("Création d'un mariage"),
-        elevation: 1,
-        backgroundColor: Colors.blue,
-        centerTitle: true,
-        titleTextStyle: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        iconTheme: IconThemeData(color: Colors.white),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(hauteur(context, 16)),
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(
@@ -106,14 +103,15 @@ class _CreateMariageScreenState extends State<CreateMariageScreen> {
                   validator: (value) =>
                   value == null || value.isEmpty ? 'Entrez une heure' : null,
                 ),
-                SizedBox(height: 20),
+                SizedBox(height: hauteur(context, 20)),
                 ElevatedButton(
                   onPressed: _saveMariage,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                    backgroundColor: secondaryColor,
+                    padding: EdgeInsets.symmetric(horizontal: largeur(context, 20), vertical: hauteur(context, 10)),
+                    elevation: 1,
                   ),
-                  child: Text('Créer le mariage', style: TextStyle(fontSize: 16, color: Colors.white)),
+                  child: Text('Créer le mariage', style: TextStyle(fontSize: hauteur(context, 16), color: Colors.white)),
                 ),
               ],
             ),

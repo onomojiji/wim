@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:excel/excel.dart';
+import 'package:wim/configs/colors.dart';
+import 'package:wim/configs/screen.dart';
 import 'package:wim/screens/qr_code_screen.dart';
 import '../helpers/database_helper.dart';
 
@@ -22,6 +24,7 @@ class InvitesListScreen extends StatefulWidget {
 class _InvitesListScreenState extends State<InvitesListScreen> {
   final DatabaseHelper _dbHelper = DatabaseHelper();
   List<Map<String, dynamic>> _invites = [];
+  bool _isLoading = false; // State to track if the loader is active
 
   @override
   void initState() {
@@ -43,6 +46,10 @@ class _InvitesListScreenState extends State<InvitesListScreen> {
     );
 
     if (result != null) {
+      setState(() {
+        _isLoading = true; // Activate loader
+      });
+
       File file = File(result.files.single.path!);
       var bytes = file.readAsBytesSync();
       var excel = Excel.decodeBytes(bytes);
@@ -72,7 +79,11 @@ class _InvitesListScreenState extends State<InvitesListScreen> {
         }
       }
 
-      _loadInvites();
+      await _loadInvites(); // Reload the invites list after import
+
+      setState(() {
+        _isLoading = false; // Deactivate loader
+      });
     }
   }
 
@@ -118,98 +129,113 @@ class _InvitesListScreenState extends State<InvitesListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.nomMariage),
-        elevation: 1,
-        backgroundColor: Colors.blue,
-        centerTitle: true,
-        titleTextStyle: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        iconTheme: IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.upload_file),
-            onPressed: _importInvites,
-          ),
-        ],
-      ),
-      body: Container(
-        color: Colors.grey[200],
-        child: Column(
-          children: [
-            if (_invites.isEmpty)
-              Expanded(
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.group, size: 100, color: Colors.grey),
-                      SizedBox(height: 20),
-                      Text(
-                        'Aucun invité trouvé.',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                      Text('Importez-en pour commencer !'),
-                    ],
-                  ),
-                ),
-              )
-            else ...[
-              Padding(
-                padding: EdgeInsets.all(10),
-                child: Text(
-                  '${_invites.length} invités',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.orange,
-                  ),
-                ),
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            title: Text(widget.nomMariage),
+            actions: [
+              IconButton(
+                icon: Icon(Icons.sim_card_download_outlined),
+                onPressed: _importInvites,
               ),
-              Expanded(
-                child: ListView.builder(
-                  padding: EdgeInsets.only(bottom: 80),
-                  itemCount: _invites.length,
-                  itemBuilder: (context, index) {
-                    final invite = _invites[index];
-                    return Container(
-                      margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.grey.withOpacity(0.2),
-                            blurRadius: 5,
-                            spreadRadius: 1,
-                          ),
-                        ],
-                      ),
-                      child: ListTile(
-                        title: Text('${invite['nom']} ${invite['prenom']}'),
-                        subtitle: Text('QR Code : ${invite['qrCode']}'),
-                        trailing: invite['presence'] == 'présent'
-                            ? Icon(Icons.check_circle, color: Colors.green)
-                            : Icon(Icons.radio_button_unchecked,
-                            color: Colors.grey),
-                      ),
-                    );
-                  },
-                ),
+              IconButton(
+                icon: Icon(Icons.upload_file),
+                onPressed: () {},
+              ),
+              IconButton(
+                icon: Icon(Icons.delete_sweep_outlined),
+                onPressed: () {},
               ),
             ],
-          ],
+          ),
+          body: Container(
+            color: Colors.grey[200],
+            child: Column(
+              children: [
+                if (_invites.isEmpty)
+                  Expanded(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.group, size: hauteur(context, 100), color: Colors.grey),
+                          SizedBox(height: hauteur(context, 20)),
+                          Text(
+                            'Aucun invité trouvé.',
+                            style: TextStyle(
+                              fontSize: hauteur(context, 14),
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                          Text('Importez-en pour commencer !'),
+                        ],
+                      ),
+                    ),
+                  )
+                else ...[
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                        vertical: hauteur(context, 10), horizontal: largeur(context, 10)),
+                    child: Text(
+                      '${_invites.length} invités',
+                      style: TextStyle(
+                        fontSize: hauteur(context, 20),
+                        fontWeight: FontWeight.bold,
+                        color: primaryColor,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      padding: EdgeInsets.only(bottom: 80),
+                      itemCount: _invites.length,
+                      itemBuilder: (context, index) {
+                        final invite = _invites[index];
+                        return Container(
+                          margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(largeur(context, 5)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey,
+                                blurRadius: 2,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                          child: ListTile(
+                            title: Text('${invite['nom']} ${invite['prenom']}'),
+                            subtitle: Text('QR Code : ${invite['qrCode']}'),
+                            trailing: invite['presence'] == 'présent'
+                                ? Icon(Icons.check_circle, color: Colors.green)
+                                : Icon(Icons.radio_button_unchecked,
+                                color: Colors.grey),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: _scanQRCode,
+            backgroundColor: secondaryColor,
+            child: Icon(Icons.qr_code, color: Colors.white),
+          ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _scanQRCode,
-        backgroundColor: Colors.blue,
-        child: Icon(Icons.qr_code, color: Colors.white),
-      ),
+        if (_isLoading)
+          Container(
+            color: Colors.black,
+            child: const Center(
+              child: CircularProgressIndicator(),
+            ),
+          ),
+      ],
     );
   }
 }

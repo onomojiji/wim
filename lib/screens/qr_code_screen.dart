@@ -92,11 +92,6 @@ class _QRScanScreenState extends State<QRScanScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Scanner un QR Code'),
-        elevation: 1,
-        backgroundColor: Colors.blue,
-        centerTitle: true,
-        titleTextStyle: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        iconTheme: IconThemeData(color: Colors.white),
         actions: [
           IconButton(
             icon: Icon(Icons.flash_on),

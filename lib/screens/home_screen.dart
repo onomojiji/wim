@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:wim/configs/colors.dart';
+import 'package:wim/configs/screen.dart';
 import '../helpers/database_helper.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -30,29 +32,37 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Accueil'),
-        elevation: 1,
-        backgroundColor: Colors.blue,
-        centerTitle: true,
-        titleTextStyle: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        title: const Text('Accueil'),
       ),
       body: _mariages.isEmpty
           ? Center(
-        child: Text(
-          'Aucun mariage trouvé. Créez-en un pour commencer !',
-          style: TextStyle(fontSize: 16),
-          textAlign: TextAlign.center,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.group, size: hauteur(context, 100), color: Colors.grey),
+            SizedBox(height: hauteur(context, 20)),
+            Text(
+              'Aucun mariage trouvé.',
+              style: TextStyle(
+                fontSize: hauteur(context, 14),
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[700],
+              ),
+            ),
+            const Text('Créez-en pour commencer !'),
+          ],
         ),
       )
           : Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: EdgeInsets.symmetric(
+                horizontal: largeur(context, 13), vertical: hauteur(context, 10)),
             child: Text(
               'Sélectionnez un mariage pour gérer les invités :',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: hauteur(context, 12),
                 fontWeight: FontWeight.w400,
                 color: Colors.black87,
                 fontStyle: FontStyle.italic,
@@ -65,17 +75,22 @@ class _HomeScreenState extends State<HomeScreen> {
               itemBuilder: (context, index) {
                 final mariage = _mariages[index];
                 return Container(
-                  margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                  margin: EdgeInsets.symmetric(
+                      vertical: hauteur(context, 5), horizontal: largeur(context, 10)),
                   decoration: BoxDecoration(
                     color: Colors.white70,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.blue, width: 1),
+                    borderRadius: BorderRadius.circular(hauteur(context, 5)),
+                    border: Border.all(color: secondaryColor, width: largeur(context, 1)),
                   ),
                   child: ListTile(
-                    title: Text('${mariage['nomMarie1']} & ${mariage['nomMarie2']}'),
+                    title: Text(
+                      '${mariage['nomMarie1']} & ${mariage['nomMarie2']}',
+                      style: TextStyle(
+                          fontSize: hauteur(context, 12), fontWeight: FontWeight.bold),
+                    ),
                     subtitle: Text(
                       'Lieu : ${mariage['lieu']}\nDate : ${mariage['date']}',
-                      style: TextStyle(fontSize: 12),
+                      style: TextStyle(fontSize: hauteur(context, 12)),
                     ),
                     isThreeLine: true,
                     onTap: () {
@@ -91,39 +106,42 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                     leading: CircleAvatar(
                       radius: 30,
-                      child: Text('${mariage['nomMarie1'][0]}/${mariage['nomMarie2'][0]}'),
+                      child:
+                      Text('${mariage['nomMarie1'][0]}/${mariage['nomMarie2'][0]}'),
                     ),
-                    trailing: Column(
-                      children: [
-                        IconButton(
-                          icon: Icon(Icons.delete_forever, color: Colors.red),
-                          onPressed: () async {
-                            // demander confirmation avant de supprimer
-                            showDialog(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: Text('Supprimer le mariage'),
-                                content: Text(
-                                    'Voulez-vous vraiment supprimer ce mariage ? \n\n Cela supprimera également tous les invités associés.'),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: Text('Annuler', style: TextStyle(color: Colors.blue)),
-                                  ),
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.pop(context);
-                                      _dbHelper.deleteMariage(mariage['id']);
-                                      _loadMariages(); // Recharger les mariages après suppression
-                                    },
-                                    child: Text('Supprimer', style: TextStyle(color: Colors.red)),
-                                  ),
-                                ],
+                    trailing: IconButton(
+                      icon: Icon(
+                        Icons.delete_forever,
+                        color: Colors.red,
+                        size: hauteur(context, 20),
+                      ),
+                      onPressed: () async {
+                        // demander confirmation avant de supprimer
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Supprimer le mariage'),
+                            content: const Text(
+                                'Voulez-vous vraiment supprimer ce mariage ? \n\nCela supprimera également tous les invités associés.'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: Text('Annuler',
+                                    style: TextStyle(color: secondaryColor)),
                               ),
-                            );
-                          },
-                        ),
-                      ],
+                              TextButton(
+                                onPressed: () async {
+                                  Navigator.pop(context);
+                                  await _dbHelper.deleteMariage(mariage['id']);
+                                  _loadMariages(); // Recharger les mariages après suppression
+                                },
+                                child: const Text('Supprimer',
+                                    style: TextStyle(color: Colors.red)),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ),
                 );
@@ -134,13 +152,13 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.pushNamed(context, '/create-mariage', arguments: 1).then((_) {
+          Navigator.pushNamed(context, '/create-mariage').then((_) {
             _loadMariages(); // Recharger les mariages après création
           });
         },
         tooltip: 'Créer un nouveau mariage',
-        backgroundColor: Colors.blue,
-        child: Icon(Icons.add, color: Colors.white),
+        backgroundColor: secondaryColor,
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
