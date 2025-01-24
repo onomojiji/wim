@@ -31,20 +31,36 @@ class _QRScanScreenState extends State<QRScanScreen> {
       final invite = await _dbHelper.getInviteByQRCode(qrCode);
 
       if (invite != null) {
+        if(invite['presence'] == 'présent') {
+          // Afficher un message si l'invité est déjà présent
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('L\'invité est déjà présent.'),
+              duration: Duration(seconds: 3),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
         // Afficher les informations de l'invité dans une boîte de dialogue
         await showDialog(
           context: context,
           barrierDismissible: false, // Empêche la fermeture sans interaction
           builder: (context) {
             return AlertDialog(
-              title: Text('Invité trouvé'),
+              title: Text('Bienvenue !'),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Nom : ${invite['nom']}'),
-                  Text('Prénom : ${invite['prenom']}'),
-                  Text('QR Code : ${invite['qrCode']}'),
-                  Text('Présence : ${invite['presence']}'),
+                  Text(
+                      'Mr/Mme ${invite['nom']} ${invite['prenom']}',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                          fontStyle: FontStyle.normal,
+                          color: Colors.black,
+                      ),
+                  ),
                 ],
               ),
               actions: [
@@ -66,6 +82,7 @@ class _QRScanScreenState extends State<QRScanScreen> {
           SnackBar(
             content: Text('Aucun invité trouvé pour ce QR Code.'),
             duration: Duration(seconds: 3),
+            backgroundColor: Colors.red,
           ),
         );
       }

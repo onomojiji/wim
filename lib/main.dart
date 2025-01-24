@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Wedding Invite Manager',
+      title: 'Wedding Invitation Manager',
       theme: ThemeData(
           appBarTheme: AppBarTheme(
               color: secondaryColor,

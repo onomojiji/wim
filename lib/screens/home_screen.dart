@@ -152,7 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.pushNamed(context, '/create-mariage').then((_) {
+          Navigator.pushNamed(context, '/create-mariage', arguments: 1).then((_) {
             _loadMariages(); // Recharger les mariages après création
           });
         },

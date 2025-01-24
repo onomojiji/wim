@@ -2,9 +2,9 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:excel/excel.dart';
-import 'package:wim/configs/colors.dart';
-import 'package:wim/configs/screen.dart';
 import 'package:wim/screens/qr_code_screen.dart';
+import '../configs/colors.dart';
+import '../configs/screen.dart';
 import '../helpers/database_helper.dart';
 
 class InvitesListScreen extends StatefulWidget {
@@ -24,7 +24,7 @@ class InvitesListScreen extends StatefulWidget {
 class _InvitesListScreenState extends State<InvitesListScreen> {
   final DatabaseHelper _dbHelper = DatabaseHelper();
   List<Map<String, dynamic>> _invites = [];
-  bool _isLoading = false; // State to track if the loader is active
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -47,7 +47,7 @@ class _InvitesListScreenState extends State<InvitesListScreen> {
 
     if (result != null) {
       setState(() {
-        _isLoading = true; // Activate loader
+        _isLoading = true;
       });
 
       File file = File(result.files.single.path!);
@@ -79,12 +79,43 @@ class _InvitesListScreenState extends State<InvitesListScreen> {
         }
       }
 
-      await _loadInvites(); // Reload the invites list after import
+      await _loadInvites();
 
       setState(() {
-        _isLoading = false; // Deactivate loader
+        _isLoading = false;
       });
     }
+  }
+
+  Future<void> _exportInvites() async {
+    final excel = Excel.createExcel();
+    final sheet = excel['Invités'];
+
+    // Sauvegarder le fichier
+    final directory = await Directory.systemTemp.createTemp();
+    final String filePath = '${directory.path}/invites.xlsx';
+    final List<int>? fileBytes = excel.encode();
+    final file = File(filePath);
+    await file.writeAsBytes(fileBytes!);
+
+    // Partager ou enregistrer le fichier
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+          content: Text('Liste exportée : $filePath'),
+          duration: Duration(seconds: 5),
+          action: SnackBarAction(
+            label: 'Ouvrir',
+            onPressed: () {
+              File(filePath).open();
+            },
+          )),
+    );
+  }
+
+
+
+  int _getTotalPresentInvites() {
+    return _invites.where((invite) => invite['presence'] == 'présent').length;
   }
 
   Future<void> _handleDuplicateInvite(
@@ -110,7 +141,7 @@ class _InvitesListScreenState extends State<InvitesListScreen> {
                 await _dbHelper.updateInvite(existingInvite['id'], newInvite);
                 Navigator.pop(context);
               },
-              child: Text('Écraser'),
+              child: Text('Écraser', style: TextStyle(color: Colors.red)),
             ),
           ],
         );
@@ -141,7 +172,7 @@ class _InvitesListScreenState extends State<InvitesListScreen> {
               ),
               IconButton(
                 icon: Icon(Icons.upload_file),
-                onPressed: () {},
+                onPressed: _exportInvites,
               ),
               IconButton(
                 icon: Icon(Icons.delete_sweep_outlined),
@@ -159,7 +190,8 @@ class _InvitesListScreenState extends State<InvitesListScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.group, size: hauteur(context, 100), color: Colors.grey),
+                          Icon(Icons.group,
+                              size: hauteur(context, 100), color: Colors.grey),
                           SizedBox(height: hauteur(context, 20)),
                           Text(
                             'Aucun invité trouvé.',
@@ -177,13 +209,15 @@ class _InvitesListScreenState extends State<InvitesListScreen> {
                 else ...[
                   Padding(
                     padding: EdgeInsets.symmetric(
-                        vertical: hauteur(context, 10), horizontal: largeur(context, 10)),
+                      vertical: hauteur(context, 10),
+                      horizontal: largeur(context, 10),
+                    ),
                     child: Text(
-                      '${_invites.length} invités',
+                      '${_invites.length} invités - ${_getTotalPresentInvites()} présents',
                       style: TextStyle(
-                        fontSize: hauteur(context, 20),
+                        fontSize: hauteur(context, 15),
                         fontWeight: FontWeight.bold,
-                        color: primaryColor,
+                        color: secondaryColor,
                       ),
                     ),
                   ),
@@ -194,10 +228,12 @@ class _InvitesListScreenState extends State<InvitesListScreen> {
                       itemBuilder: (context, index) {
                         final invite = _invites[index];
                         return Container(
-                          margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                          margin: EdgeInsets.symmetric(
+                              vertical: 5, horizontal: 10),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(largeur(context, 5)),
+                            borderRadius:
+                            BorderRadius.circular(largeur(context, 5)),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.grey,
@@ -207,8 +243,10 @@ class _InvitesListScreenState extends State<InvitesListScreen> {
                             ],
                           ),
                           child: ListTile(
-                            title: Text('${invite['nom']} ${invite['prenom']}'),
-                            subtitle: Text('QR Code : ${invite['qrCode']}'),
+                            title:
+                            Text('${invite['nom']} ${invite['prenom']}'),
+                            subtitle:
+                            Text('QR Code : ${invite['qrCode']}'),
                             trailing: invite['presence'] == 'présent'
                                 ? Icon(Icons.check_circle, color: Colors.green)
                                 : Icon(Icons.radio_button_unchecked,
@@ -230,7 +268,7 @@ class _InvitesListScreenState extends State<InvitesListScreen> {
         ),
         if (_isLoading)
           Container(
-            color: Colors.black,
+            color: Colors.black.withOpacity(0.5),
             child: const Center(
               child: CircularProgressIndicator(),
             ),
