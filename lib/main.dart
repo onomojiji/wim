@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:wim/configs/colors.dart';
 import 'package:wim/screens/create_mariage_screen.dart';
 import 'package:wim/screens/invites_list_screen.dart';
+import 'package:wim/screens/qr_code_screen.dart';
 import 'package:wim/screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
@@ -54,6 +55,14 @@ class MyApp extends StatelessWidget {
                   mariageId: mariageId,
                   nomMariage: nomMariage,
                 ),
+              );
+            }
+            return _errorRoute();
+          case '/qrcode-scanner':
+            if (settings.arguments is int) {
+              final mariageId = settings.arguments as int;
+              return MaterialPageRoute(
+                builder: (context) => QRScanScreen(mariageId: mariageId),
               );
             }
             return _errorRoute();

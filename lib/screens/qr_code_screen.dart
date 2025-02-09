@@ -4,6 +4,10 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../helpers/database_helper.dart';
 
 class QRScanScreen extends StatefulWidget {
+  final int mariageId;
+
+  QRScanScreen({required this.mariageId});
+
   @override
   _QRScanScreenState createState() => _QRScanScreenState();
 }
@@ -20,88 +24,90 @@ class _QRScanScreenState extends State<QRScanScreen> {
   }
 
   Future<void> _handleQRCode(String qrCode) async {
-    // Empêcher le traitement multiple des mêmes données scannées
-    if (_isProcessing) return;
-    setState(() {
-      _isProcessing = true;
-    });
+    if (_isProcessing) return; // Empêche le traitement multiple
+    setState(() => _isProcessing = true);
+
+    // Désactiver temporairement la caméra
+    cameraController.stop();
 
     try {
-      // Rechercher l'invité dans la base de données
       final invite = await _dbHelper.getInviteByQRCode(qrCode);
 
-      if (invite != null) {
-        if(invite['presence'] == 'présent') {
-          // Afficher un message si l'invité est déjà présent
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('L\'invité est déjà présent.'),
-              duration: Duration(seconds: 3),
-              backgroundColor: Colors.red,
-            ),
+      if (invite != null && invite['mariageId'] == widget.mariageId) {
+        int nombrePlaces = invite['nombrePlaces'] ?? 1;
+        int nombrePresent = invite['nombrePresent'] ?? 0;
+
+        if (nombrePresent >= nombrePlaces) {
+          _showDialog(
+            title: '⚠️ Billet complet',
+            content:
+            'Le billet de ${invite['nom']} couvre déjà $nombrePlaces personnes.\n'
+                'Aucune place restante !',
+            color: Colors.red,
+            dismissible: false,
           );
-          return;
+        } else {
+          nombrePresent++;
+          await _dbHelper.updatePresence(invite['id'], nombrePresent);
+
+          int placesRestantes = nombrePlaces - nombrePresent;
+
+          _showDialog(
+            title: '✅ Bienvenue !',
+            content:
+            'Mr/Mme ${invite['nom']} \n'
+                'Places restantes sur le billet : $placesRestantes',
+            color: Colors.green,
+            dismissible: false,
+          );
         }
-        // Afficher les informations de l'invité dans une boîte de dialogue
-        await showDialog(
-          context: context,
-          barrierDismissible: false, // Empêche la fermeture sans interaction
-          builder: (context) {
-            return AlertDialog(
-              title: Text('Bienvenue !'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                      'Mr/Mme ${invite['nom']} ${invite['prenom']}',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                          fontStyle: FontStyle.normal,
-                          color: Colors.black,
-                      ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () async {
-                    // Mettre à jour la présence de l'invité
-                    await _dbHelper.updatePresence(invite['id'], 'présent');
-                    Navigator.pop(context); // Fermer la boîte de dialogue
-                  },
-                  child: Text('OK'),
-                ),
-              ],
-            );
-          },
-        );
       } else {
-        // Afficher un message si l'invité n'est pas trouvé
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Aucun invité trouvé pour ce QR Code.'),
-            duration: Duration(seconds: 3),
-            backgroundColor: Colors.red,
-          ),
+        _showDialog(
+          title: '❌ QR Code invalide',
+          content: 'Aucun invité trouvé pour ce QR Code.',
+          color: Colors.red,
+          dismissible: false,
         );
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('Erreur lors du traitement du QR Code : $e');
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Une erreur est survenue. Veuillez réessayer.'),
-          duration: Duration(seconds: 3),
-        ),
+      if (kDebugMode) print('Erreur : $e');
+      _showDialog(
+        title: '❌ Erreur',
+        content: 'Une erreur est survenue, veuillez réessayer.',
+        color: Colors.red,
+        dismissible: false,
       );
-    } finally {
-      // Réinitialiser le traitement
-      setState(() {
-        _isProcessing = false;
-      });
     }
+  }
+
+  void _showDialog({
+    required String title,
+    required String content,
+    required Color color,
+    required bool dismissible,
+  }) {
+    showDialog(
+      context: context,
+      barrierDismissible: dismissible,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(title, style: TextStyle(color: color)),
+          content: Text(content, style: TextStyle(fontSize: 18)),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Ferme le dialogue
+                setState(() => _isProcessing = false);
+                Future.delayed(Duration(milliseconds: 500), () {
+                  cameraController.start(); // Réactiver la caméra
+                });
+              },
+              child: Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -112,15 +118,11 @@ class _QRScanScreenState extends State<QRScanScreen> {
         actions: [
           IconButton(
             icon: Icon(Icons.flash_on),
-            onPressed: () {
-              cameraController.toggleTorch();
-            },
+            onPressed: () => cameraController.toggleTorch(),
           ),
           IconButton(
             icon: Icon(Icons.cameraswitch),
-            onPressed: () {
-              cameraController.switchCamera();
-            },
+            onPressed: () => cameraController.switchCamera(),
           ),
         ],
       ),
@@ -131,7 +133,7 @@ class _QRScanScreenState extends State<QRScanScreen> {
           for (final barcode in barcodes) {
             final String? code = barcode.rawValue;
             if (code != null) {
-              _handleQRCode(code); // Traiter le QR Code scanné
+              _handleQRCode(code);
               break; // Traiter un seul QR Code à la fois
             }
           }

@@ -25,17 +25,41 @@ class _InvitesListScreenState extends State<InvitesListScreen> {
   final DatabaseHelper _dbHelper = DatabaseHelper();
   List<Map<String, dynamic>> _invites = [];
   bool _isLoading = false;
+  int nmbreInvites = 0;
+  int nbrePresentInvites = 0;
 
   @override
   void initState() {
     super.initState();
     _loadInvites();
+    _totalInvites();
+    _totalInvitesPresent();
   }
 
   Future<void> _loadInvites() async {
     final invites = await _dbHelper.getInvites(widget.mariageId);
     setState(() {
       _invites = invites;
+    });
+  }
+
+  //int _getTotalPresentInvites() {
+    //return _invites.fold<int>(0, (total, invite) => total + (invite['nombrePresent'] is int ? invite['nombrePresent'] : 0));
+  //}
+
+  Future<void> _totalInvites() async{
+    final totalInvites = await _dbHelper.getInviteCount(widget.mariageId);
+
+    setState(() {
+      nmbreInvites = totalInvites;
+    });
+  }
+
+  Future<void> _totalInvitesPresent() async{
+    final totalPresentInvites = await _dbHelper.getPresentInvite(widget.mariageId);
+
+    setState(() {
+      nbrePresentInvites = totalPresentInvites;
     });
   }
 
@@ -56,23 +80,40 @@ class _InvitesListScreenState extends State<InvitesListScreen> {
 
       for (var table in excel.tables.keys) {
         for (var row in excel.tables[table]!.rows.skip(1)) {
-          final String nom = "${row[0]?.value}";
-          final String prenom = "${row[1]?.value}";
-          final String qrCode = "${row[2]?.value}";
+          final String nomPorteur = row[0]?.value.toString() ?? "";
+          final String ville = row[1]?.value.toString() ?? "";
+          final String nom = row[2]?.value.toString() ?? "";
+          final String telephone = row[3]?.value.toString() ?? "";
+          final int nombrePlaces = int.tryParse(row[4]?.value.toString() ?? "1") ?? 1;
+          final String qrCode = row[5]?.value.toString() ?? "";
 
           final existingInvite = await _dbHelper.getInviteByQRCode(qrCode);
           if (existingInvite != null) {
-            await _handleDuplicateInvite(existingInvite, {
-              'mariageId': widget.mariageId,
-              'nom': nom,
-              'prenom': prenom,
-              'qrCode': qrCode,
-            });
+            // réccupère l'id du mariage de l'invité présent dans la bd
+            int existingMariageId = existingInvite["mariageId"];
+
+            if (existingMariageId != widget.mariageId){
+              await _dbHelper.insertInvite({
+                'mariageId': widget.mariageId,
+                'nomPorteur': nomPorteur,
+                'ville': ville,
+                'nom': nom,
+                'telephone': telephone,
+                'nombrePlaces': nombrePlaces,
+                'qrCode': qrCode,
+              });
+            }else{
+              // pass
+              continue;
+            }
           } else {
             await _dbHelper.insertInvite({
               'mariageId': widget.mariageId,
+              'nomPorteur': nomPorteur,
+              'ville': ville,
               'nom': nom,
-              'prenom': prenom,
+              'telephone': telephone,
+              'nombrePlaces': nombrePlaces,
               'qrCode': qrCode,
             });
           }
@@ -91,70 +132,53 @@ class _InvitesListScreenState extends State<InvitesListScreen> {
     final excel = Excel.createExcel();
     final sheet = excel['Invités'];
 
-    // Sauvegarder le fichier
+    sheet.appendRow([
+      TextCellValue('Nom du Porteur'),
+      TextCellValue('Ville'),
+      TextCellValue('Nom'),
+      TextCellValue('Téléphone'),
+      TextCellValue('Nombre de Places'),
+      TextCellValue('QR Code'),
+      TextCellValue('Présents'),
+    ]);
+
+    for (var invite in _invites) {
+      sheet.appendRow([
+        TextCellValue(invite['nomPorteur']),
+        TextCellValue(invite['ville']),
+        TextCellValue(invite['nom']),
+        TextCellValue(invite['telephone']),
+        IntCellValue(invite['nombrePlaces']),
+        TextCellValue(invite['qrCode']),
+        TextCellValue('${invite['nombrePresent']}/${invite['nombrePlaces']}'),
+      ]);
+    }
+
     final directory = await Directory.systemTemp.createTemp();
     final String filePath = '${directory.path}/invites.xlsx';
     final List<int>? fileBytes = excel.encode();
     final file = File(filePath);
     await file.writeAsBytes(fileBytes!);
 
-    // Partager ou enregistrer le fichier
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-          content: Text('Liste exportée : $filePath'),
-          duration: Duration(seconds: 5),
-          action: SnackBarAction(
-            label: 'Ouvrir',
-            onPressed: () {
-              File(filePath).open();
-            },
-          )),
-    );
-  }
-
-
-
-  int _getTotalPresentInvites() {
-    return _invites.where((invite) => invite['presence'] == 'présent').length;
-  }
-
-  Future<void> _handleDuplicateInvite(
-      Map<String, dynamic> existingInvite,
-      Map<String, dynamic> newInvite,
-      ) async {
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Invité déjà existant'),
-          content: Text(
-            'L\'invité ${existingInvite['nom']} ${existingInvite['prenom']} existe déjà.\n'
-                'Voulez-vous écraser ses informations ?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Ignorer'),
-            ),
-            TextButton(
-              onPressed: () async {
-                await _dbHelper.updateInvite(existingInvite['id'], newInvite);
-                Navigator.pop(context);
-              },
-              child: Text('Écraser', style: TextStyle(color: Colors.red)),
-            ),
-          ],
-        );
-      },
+        content: Text('Liste exportée : $filePath'),
+        duration: Duration(seconds: 5),
+        action: SnackBarAction(
+          label: 'Ouvrir',
+          onPressed: () {
+            File(filePath).open();
+          },
+        ),
+      ),
     );
   }
 
   Future<void> _scanQRCode() async {
-    Navigator.push(
+    Navigator.pushNamed(
       context,
-      MaterialPageRoute(
-        builder: (context) => QRScanScreen(),
-      ),
+      '/qrcode-scanner',
+      arguments: widget.mariageId,
     );
   }
 
@@ -174,89 +198,60 @@ class _InvitesListScreenState extends State<InvitesListScreen> {
                 icon: Icon(Icons.upload_file),
                 onPressed: _exportInvites,
               ),
-              IconButton(
-                icon: Icon(Icons.delete_sweep_outlined),
-                onPressed: () {},
-              ),
             ],
           ),
           body: Container(
             color: Colors.grey[200],
             child: Column(
               children: [
-                if (_invites.isEmpty)
-                  Expanded(
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.group,
-                              size: hauteur(context, 100), color: Colors.grey),
-                          SizedBox(height: hauteur(context, 20)),
-                          Text(
-                            'Aucun invité trouvé.',
-                            style: TextStyle(
-                              fontSize: hauteur(context, 14),
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey[700],
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    vertical: hauteur(context, 10),
+                    horizontal: largeur(context, 10),
+                  ),
+                  child: Text(
+                    '$nmbreInvites invités - $nbrePresentInvites présents',
+                    style: TextStyle(
+                      fontSize: hauteur(context, 15),
+                      fontWeight: FontWeight.bold,
+                      color: secondaryColor,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    padding: EdgeInsets.only(bottom: 80),
+                    itemCount: _invites.length,
+                    itemBuilder: (context, index) {
+                      final invite = _invites[index];
+                      final int nombrePlaces = invite['nombrePlaces'] ?? 1;
+                      final int nombrePresent = invite['nombrePresent'] ?? 0;
+                      final bool complet = nombrePresent == nombrePlaces;
+
+                      return Container(
+                        margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(largeur(context, 5)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey,
+                              blurRadius: 2,
+                              spreadRadius: 1,
                             ),
-                          ),
-                          Text('Importez-en pour commencer !'),
-                        ],
-                      ),
-                    ),
-                  )
-                else ...[
-                  Padding(
-                    padding: EdgeInsets.symmetric(
-                      vertical: hauteur(context, 10),
-                      horizontal: largeur(context, 10),
-                    ),
-                    child: Text(
-                      '${_invites.length} invités - ${_getTotalPresentInvites()} présents',
-                      style: TextStyle(
-                        fontSize: hauteur(context, 15),
-                        fontWeight: FontWeight.bold,
-                        color: secondaryColor,
-                      ),
-                    ),
+                          ],
+                        ),
+                        child: ListTile(
+                          title: Text('${invite['nom']} ($nombrePresent/$nombrePlaces présents)', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),),
+                          subtitle: Text('De ${invite['ville']}'),
+                          trailing: complet
+                              ? Icon(Icons.check_circle, color: Colors.green)
+                              : Icon(Icons.radio_button_unchecked, color: Colors.grey),
+                        ),
+                      );
+                    },
                   ),
-                  Expanded(
-                    child: ListView.builder(
-                      padding: EdgeInsets.only(bottom: 80),
-                      itemCount: _invites.length,
-                      itemBuilder: (context, index) {
-                        final invite = _invites[index];
-                        return Container(
-                          margin: EdgeInsets.symmetric(
-                              vertical: 5, horizontal: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius:
-                            BorderRadius.circular(largeur(context, 5)),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey,
-                                blurRadius: 2,
-                                spreadRadius: 1,
-                              ),
-                            ],
-                          ),
-                          child: ListTile(
-                            title:
-                            Text('${invite['nom']} ${invite['prenom']}'),
-                            subtitle:
-                            Text('QR Code : ${invite['qrCode']}'),
-                            trailing: invite['presence'] == 'présent'
-                                ? Icon(Icons.check_circle, color: Colors.green)
-                                : Icon(Icons.radio_button_unchecked,
-                                color: Colors.grey),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
+                ),
               ],
             ),
           ),
@@ -269,9 +264,7 @@ class _InvitesListScreenState extends State<InvitesListScreen> {
         if (_isLoading)
           Container(
             color: Colors.black.withOpacity(0.5),
-            child: const Center(
-              child: CircularProgressIndicator(),
-            ),
+            child: const Center(child: CircularProgressIndicator()),
           ),
       ],
     );

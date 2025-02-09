@@ -89,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           fontSize: hauteur(context, 12), fontWeight: FontWeight.bold),
                     ),
                     subtitle: Text(
-                      'Lieu : ${mariage['lieu']}\nDate : ${mariage['date']}',
+                      'Lieu : ${mariage['lieu']}\nDate : ${mariage['date']}\nHeure : ${mariage['heure']}',
                       style: TextStyle(fontSize: hauteur(context, 12)),
                     ),
                     isThreeLine: true,
